@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AI-Костёр 🔥</title>
+  <style>
+    :root{ --bg:#0b0e14; --muted:#98a2b3; }
+    *{box-sizing:border-box}
+    html,body{ height:100%; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+          background:#0b0e14; min-height:100vh; color:#e5e7eb; }
+    .container{ width:min(1100px,100%); margin:0 auto; display:grid; grid-template-columns:360px 1fr; gap:16px; padding:16px; }
+    .panel,.scene{ background:rgba(17,21,29,0.85); backdrop-filter:blur(6px); border:1px solid #263043; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    .panel{ padding:18px; }
+    .scene{ position:relative; aspect-ratio:1/1; min-height:520px; overflow:hidden; }
+    textarea{ width:100%; min-height:120px; resize:vertical; padding:10px; background:#0f1420; border:1px solid #2e3a51; border-radius:10px; color:#e5e7eb; font-size:14px;}
+    button{border:0; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; margin-top:6px; margin-right:6px;}
+    .start{ background:#10b981; color:#052e2b; }
+    .stop{ background:#ef4444; color:#fff; }
+    .reset{ background:#334155; color:#e5e7eb; }
+    .names-circle{ position:absolute; inset:0; margin:auto; width:100%; height:100%; z-index:6; pointer-events:none; }
+    .name-pill{ position:absolute; transform:translate(-50%,-50%); padding:6px 10px; border-radius:999px; border:1px solid #2e3a51; background:rgba(18,24,38,.85); user-select:none; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.25); transition:transform .08s ease; pointer-events:auto; }
+    .name-pill:hover{ transform:translate(-50%,-50%) scale(1.03); }
+    .name-active{ border-color:#ffd166; background:rgba(255,213,102,.2); }
+    .ground{ position:absolute; left:50%; top:62%; width:64%; height:30%; transform:translateX(-50%); background:radial-gradient(60% 60% at 50% 100%, rgba(255,170,50,.25), transparent 60%); filter:blur(18px); z-index:1;}
+    .fire-wrap{ position:absolute; left:50%; top:60%; transform:translate(-50%,-50%); width:180px; height:auto; z-index:3;}
+    .logs{ position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); width:180px; height:50px;}
+    .log{ position:absolute; bottom:0; width:120px; height:24px; border-radius:12px; background:linear-gradient(#5a3f2e,#3e2c21);}
+    .log.left{ left:8px; transform:rotate(18deg);} .log.right{ right:8px; transform:rotate(-18deg);}
+    .flame{ position:relative; width:140px; height:160px; margin:0 auto; filter:drop-shadow(0 0 40px rgba(255,140,0,.5)); display:none;}
+    .flame span{ position:absolute; bottom:0; left:50%; transform:translateX(-50%); border-radius:50% 50% 45% 45%; animation:flicker 1s infinite ease-in-out alternate; mix-blend-mode:screen;}
+    .f1{ width:120px; height:140px; background:radial-gradient(circle at 50% 70%, #fb8500 0%, rgba(251,133,0,0) 70%); animation-duration:1.4s;}
+    .f2{ width:90px; height:110px; background:radial-gradient(circle at 50% 70%, #ffd166 0%, rgba(255,209,102,0) 70%); animation-duration:1.1s;}
+    .f3{ width:60px; height:90px; background:radial-gradient(circle at 50% 70%, #fff6cc 0%, rgba(255,255,255,0) 70%); animation-duration:0.9s;}
+    @keyframes flicker{ 0%{ transform:translateX(-50%) scale(1) rotate(-2deg); opacity:1;} 50%{ transform:translateX(-50%) scale(1.05) rotate(2deg); opacity:0.8;} 100%{ transform:translateX(-50%) scale(0.95) rotate(-1deg); opacity:1;} }
+    canvas#smokeCanvas{ position:absolute; inset:0; width:100%; height:100%; z-index:4; pointer-events:none;}
+    .smoke-label{ position:absolute; left:12px; top:12px; right:12px; text-align:center; z-index:7;}
+    .stars{ position:absolute; inset:0; background:transparent; z-index:0; pointer-events:none;}
+    .evening-award{ margin-top:20px; padding:12px; border-radius:12px; background:rgba(30,40,55,0.85); border:1px solid #2e3a51; font-weight:bold;}
+    .tooltip{position:fixed; left:0; top:0; transform:translate(-50%,-120%) scale(.96); background:rgba(15,20,32,.96); padding:6px 10px; border-radius:8px; font-size:12px; color:#e5e7eb; border:1px solid #2e3a51; box-shadow:0 6px 18px rgba(0,0,0,.35); pointer-events:none; opacity:0; transition:opacity .12s ease, transform .12s ease; z-index:9999;}
+    .tooltip.show{ opacity:1; transform:translate(-50%,-120%) scale(1); }
+    .tooltip::after{ content:""; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); border:6px solid transparent; border-top-color:#2e3a51; }
+
+    /* 📱 адаптив для телефонов */
+    @media (max-width: 768px) {
+      .container { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .scene { width: 100%; height: auto; min-height: 420px; aspect-ratio: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h1>AI-Костёр 🔥</h1>
+      <textarea id="namesInput" placeholder="Введи имена по одному на строку"></textarea><br>
+      <button id="toggleBtn" class="start" type="button">Пуск</button>
+      <button id="resetBtn" class="reset" type="button">Сбросить</button>
+      <div class="evening-award" id="eveningAward">🏆 Самая красивая девушка вечера: —</div>
+    </div>
+    <div class="scene" id="scene">
+      <div class="stars" id="stars"></div>
+      <div class="names-circle" id="namesCircle"></div>
+      <div class="ground"></div>
+      <div class="fire-wrap" id="fire">
+        <div class="flame" id="flame">
+          <span class="f1"></span>
+          <span class="f2"></span>
+          <span class="f3"></span>
+        </div>
+        <div class="logs"><div class="log left"></div><div class="log right"></div></div>
+      </div>
+      <canvas id="smokeCanvas"></canvas>
+      <div class="smoke-label" id="smokeLabel">🔥 Самая красивая девушка на костре пока не выбрана</div>
+    </div>
+  </div>
+  <div id="tooltip" class="tooltip" aria-hidden="true"></div>
+
+  <script>
+  (function(){
+    "use strict";
+    // --- DOM
+    var namesInput=document.getElementById('namesInput');
+    var namesCircle=document.getElementById('namesCircle');
+    var smokeLabel=document.getElementById('smokeLabel');
+    var eveningAward=document.getElementById('eveningAward');
+    var toggleBtn=document.getElementById('toggleBtn');
+    var resetBtn=document.getElementById('resetBtn');
+    var scene=document.getElementById('scene');
+    var canvas=document.getElementById('smokeCanvas');
+    var ctx=canvas.getContext('2d');
+    var tooltip=document.getElementById('tooltip');
+    var flame=document.getElementById('flame');
+
+    // --- State
+    var names=[]; var current=null; var running=false;
+    var smokeAngle=-Math.PI/2; var times={}; var lastUpdate=Date.now();
+    var tickTimer=null; var engineTimer=null; var uiTimer=null;
+    var hoveredName=null; var tooltipTimer=null; var particles=[];
+
+    // --- Helpers
+    function pad2(n){ n=Math.floor(n); return (n<10?'0':'')+n; }
+    function hasOwn(o,k){ return Object.prototype.hasOwnProperty.call(o,k); }
+
+    function sizeSceneToCanvas(){
+      var w=scene.clientWidth, h=scene.clientHeight;
+      if (w>0 && h>0){
+        var dpr = Math.max(1, Math.min(2, window.devicePixelRatio||1));
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        canvas.style.width = w+'px';
+        canvas.style.height = h+'px';
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+      }
+    }
+
+    function observeScene(){
+      if (window.ResizeObserver){
+        try{
+          var ro = new ResizeObserver(function(){ sizeSceneToCanvas(); });
+          ro.observe(scene);
+        }catch(e){
+          window.addEventListener('resize', sizeSceneToCanvas, false);
+          window.addEventListener('orientationchange', function(){ setTimeout(sizeSceneToCanvas, 60); }, false);
+        }
+      }else{
+        window.addEventListener('resize', sizeSceneToCanvas, false);
+        window.addEventListener('orientationchange', function(){ setTimeout(sizeSceneToCanvas, 60); }, false);
+      }
+    }
+
+    function getCenter(){ return {x:scene.clientWidth/2, y:scene.clientHeight*0.55}; }
+    function getRingRadius(){ return Math.min(scene.clientWidth,scene.clientHeight)*0.36; }
+
+    function formatTime(t){
+      if(t>=60){ var m=Math.floor(t/60); var s=Math.floor(t%60); return m+':'+pad2(s); }
+      return t.toFixed(1)+' сек';
+    }
+    function accumulatedTime(name){
+      var t=times[name]||0; if(name===current&&running){t+=(Date.now()-lastUpdate)/1000;} return t;
+    }
+
+    function clearNode(node){ while(node.firstChild){ node.removeChild(node.firstChild);} }
+
+    function renderNames(){
+      clearNode(namesCircle);
+      var c=getCenter(); var R=getRingRadius(); var n=names.length||1;
+      for(var i=0;i<names.length;i++){
+        var angle=(i/n)*Math.PI*2-Math.PI/2; var x=c.x+R*Math.cos(angle); var y=c.y+R*Math.sin(angle);
+        var div=document.createElement('div'); div.className='name-pill'+(current===names[i]?' name-active':''); div.textContent=names[i];
+        div.style.left=x+'px'; div.style.top=y+'px';
+        div.addEventListener('mouseenter', (function(name,el){ return function(){ hoveredName=name; showTooltipForElement(el,hoveredName);
+          if(!tooltipTimer){ tooltipTimer=setInterval(function(){ if(!hoveredName)return; updateTooltipForElement(el,hoveredName); },100); } }; })(names[i],div), false);
+        div.addEventListener('mouseleave', function(){ hoveredName=null; hideTooltip(); if(tooltipTimer){ clearInterval(tooltipTimer); tooltipTimer=null; } }, false);
+        namesCircle.appendChild(div);
+      }
+    }
+
+    function updateNames(){
+      var raw = namesInput.value || "";
+      var arr = raw.split(/\r?\n/);
+      var out = [];
+      for(var i=0;i<arr.length;i++){
+        var s = arr[i].replace(/^\s+|\s+$/g,'');
+        if(s){ out.push(s); }
+      }
+      names = out;
+      var newTimes={};
+      for(i=0;i<names.length;i++){ var nm=names[i]; newTimes[nm]=hasOwn(times,nm)?times[nm]:0; }
+      times=newTimes;
+      chooseCurrentByAngle();
+      renderNames();
+    }
+
+    function chooseCurrentByAngle(){
+      if(!names.length){ current=null; smokeLabel.textContent='🔥 Самая красивая девушка на костре пока не выбрана'; return; }
+      var best=null, bestDiff=Infinity, n=names.length;
+      for(var i=0;i<n;i++){
+        var angle=(i/n)*Math.PI*2-Math.PI/2;
+        var diff=Math.abs(Math.atan2(Math.sin(angle-smokeAngle),Math.cos(angle-smokeAngle)));
+        if(diff<bestDiff){ bestDiff=diff; best=names[i]; }
+      }
+      current=best; if(!hasOwn(times,current)) times[current]=0;
+      smokeLabel.textContent='🔥 Самая красивая девушка на костре - '+current;
+    }
+
+    function updateEveningAward(){
+      var bestName='—', bestTime=0, name;
+      for(name in times){ if(!hasOwn(times,name)) continue;
+        var val=times[name]; var t=(name===current&&running)?val+(Date.now()-lastUpdate)/1000:val;
+        if(t>bestTime){ bestTime=t; bestName=name; }
+      }
+      eveningAward.textContent='🏆 Самая красивая девушка вечера: '+bestName;
+      var nodes=namesCircle.querySelectorAll('.name-pill');
+      for(var i=0;i<nodes.length;i++){ nodes[i].classList.remove('name-active'); }
+      var idx=indexOfName(current);
+      if(idx>=0 && nodes[idx]) nodes[idx].classList.add('name-active');
+    }
+
+    function indexOfName(nm){
+      for(var i=0;i<names.length;i++){ if(names[i]===nm) return i; }
+      return -1;
+    }
+
+    function startEngine(){
+      if(engineTimer) return; lastUpdate=Date.now();
+      engineTimer=setInterval(function(){ var now=Date.now(); var dt=(now-lastUpdate)/1000; lastUpdate=now; if(running&&current){ times[current]=(times[current]||0)+dt; } },100);
+      uiTimer=setInterval(updateEveningAward,200);
+    }
+    function stopEngine(){ if(engineTimer){clearInterval(engineTimer);engineTimer=null;} if(uiTimer){clearInterval(uiTimer);uiTimer=null;} }
+
+    function scheduleNextAngle(){
+      if(!running) return;
+      var delay=15000+Math.random()*30000;
+      tickTimer=setTimeout(function(){ smokeAngle=Math.random()*Math.PI*2-Math.PI; chooseCurrentByAngle(); renderNames(); scheduleNextAngle(); },delay);
+    }
+
+    function onToggle(ev){
+      if(ev && ev.preventDefault) ev.preventDefault();
+      if(!running){
+        running=true; toggleBtn.textContent='Стоп'; toggleBtn.className='stop';
+        flame.style.display='block'; scheduleNextAngle(); startEngine();
+      }else{
+        running=false; toggleBtn.textContent='Пуск'; toggleBtn.className='start';
+        flame.style.display='none'; if(tickTimer){clearTimeout(tickTimer);tickTimer=null;} stopEngine(); updateEveningAward();
+      }
+    }
+
+    function onReset(ev){
+      if(ev && ev.preventDefault) ev.preventDefault();
+      running=false; flame.style.display='none'; if(tickTimer){clearTimeout(tickTimer);tickTimer=null;} stopEngine();
+      current=null; smokeLabel.textContent='🔥 Самая красивая девушка на костре пока не выбрана'; times={}; renderNames();
+      eveningAward.textContent='🏆 Самая красивая девушка вечера: —'; hideTooltip();
+    }
+
+    function bindControls(){
+      // clicks
+      toggleBtn.addEventListener('click', onToggle, false);
+      resetBtn.addEventListener('click', onReset, false);
+      // touch
+      toggleBtn.addEventListener('touchend', onToggle, false);
+      resetBtn.addEventListener('touchend', onReset, false);
+      // pointer (новые браузеры)
+      if(window.PointerEvent){
+        toggleBtn.addEventListener('pointerup', onToggle, false);
+        resetBtn.addEventListener('pointerup', onReset, false);
+      }
+    }
+
+    function showTooltipForElement(el,name){ updateTooltipForElement(el,name); tooltip.classList.add('show'); tooltip.setAttribute('aria-hidden','false'); }
+    function updateTooltipForElement(el,name){
+      var rect=el.getBoundingClientRect();
+      tooltip.textContent = name+' — '+formatTime(accumulatedTime(name));
+      tooltip.style.left=(rect.left+rect.width/2)+'px';
+      tooltip.style.top=(rect.top-8)+'px';
+    }
+    function hideTooltip(){ tooltip.classList.remove('show'); tooltip.setAttribute('aria-hidden','true'); }
+
+    function spawnParticle(){
+      var c=getCenter(); var angleVariation=(Math.random()-0.5)*0.5;
+      particles.push({x:c.x,y:c.y,vx:Math.cos(smokeAngle+angleVariation)*(0.5+Math.random()*1.5),vy:Math.sin(smokeAngle+angleVariation)*(0.5+Math.random()*1.5)-0.6,size:10+Math.random()*25,life:120+Math.random()*80,alpha:1});
+    }
+    function animateSmoke(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(var i=0;i<particles.length;i++){
+        var p=particles[i];
+        p.x+=p.vx+(Math.random()-0.5)*0.3; p.y+=p.vy; p.life--; p.alpha=Math.max(0,p.life/200);
+        var g=ctx.createRadialGradient(p.x,p.y,p.size*0.2,p.x,p.y,p.size);
+        g.addColorStop(0,'rgba(60,60,60,'+p.alpha+')');
+        g.addColorStop(0.5,'rgba(150,150,150,'+(p.alpha*0.6)+')');
+        g.addColorStop(1,'rgba(220,220,220,0)');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+      }
+      // filter dead
+      var alive=[]; for(i=0;i<particles.length;i++){ if(particles[i].life>0) alive.push(particles[i]); } particles=alive;
+      if(running&&current&&Math.random()<0.7) spawnParticle();
+      window.requestAnimationFrame(animateSmoke);
+    }
+
+    // Robust init for any mobile/legacy browsers
+    function robustInit(){
+      var tries=0;
+      var check=function(){
+        tries++;
+        sizeSceneToCanvas();
+        if(scene.clientWidth>0 && scene.clientHeight>0){
+          observeScene();
+          bindControls();
+          updateNames();
+          animateSmoke();
+        }else if(tries<120){
+          window.requestAnimationFrame(check);
+        }else{
+          scene.style.minHeight = scene.style.minHeight || '420px';
+          sizeSceneToCanvas(); observeScene(); bindControls(); updateNames(); animateSmoke();
+        }
+      };
+      check();
+    }
+
+    // Input handlers
+    namesInput.addEventListener('input', function(){ updateNames(); hideTooltip(); }, false);
+    namesInput.addEventListener('change', function(){ updateNames(); hideTooltip(); }, false);
+
+    // Start
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', robustInit, false);
+    }else{
+      robustInit();
+    }
+    window.addEventListener('load', function(){ sizeSceneToCanvas(); updateNames(); }, false);
+  })();
+  </script>
+</body>
+</html>
